@@ -1,10 +1,11 @@
 import sys
-import json
 sys.path.append('/dev/blockchain-python')
 
 from backend.core.block import Block
 from backend.core.blockheader import BlockHeader
+from backend.core.database.database import BlockChainDB
 from backend.util.util import hash256
+
 import time
 
 ZERO_HASH = '0' * 64
@@ -22,8 +23,15 @@ class BlockChain:
     """
     
     def __init__(self):
-        self.chain = []
         self.genenis_block()
+
+    def write_on_disk(self, block):
+        blockChainDB = BlockChainDB()
+        blockChainDB.write(block)
+    
+    def fetch_last_block(self):
+        blockChainDB = BlockChainDB()
+        return blockChainDB.last_block()
 
     def genenis_block(self):
         BlockHeight = 0
@@ -37,14 +45,14 @@ class BlockChain:
         bits = 'ffff0001f'
         blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, bits)
         blockHeader.mine()
-        self.chain.append(Block(BlockHeight, 1, blockHeader.__dict__, 1, transaction).__dict__)
-        print(json.dumps(self.chain, indent=4))
+        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, transaction).__dict__])
+        
 
     def main(self):
         while True:
-            lastBlock = self.chain[::-1]
-            BlockHeight = lastBlock[0]["height"] + 1
-            prevBlockHash = lastBlock[0]["blockHeader"]["blockHash"]
+            lastBlock = self.fetch_last_block()
+            BlockHeight = lastBlock["height"] + 1
+            prevBlockHash = lastBlock["blockHeader"]["blockHash"]
             self.add_block(BlockHeight, prevBlockHash)
 
 
