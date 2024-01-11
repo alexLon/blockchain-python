@@ -5,6 +5,7 @@ from backend.core.block import Block
 from backend.core.blockheader import BlockHeader
 from backend.core.database.database import BlockChainDB
 from backend.util.util import hash256
+from backend.core.transaction import CoinbaseTx
 
 import time
 
@@ -40,12 +41,13 @@ class BlockChain:
 
     def add_block(self, BlockHeight, prevBlockHash):
         timestamp = int(time.time())
-        transaction = f"Alex sent {BlockHeight} BTC to Marie"
-        merkleRoot = hash256(transaction.encode()).hex()
+        coinbaseInstance = CoinbaseTx(BlockHeight)
+        coinbaseTx = coinbaseInstance.CoinbaseTransaction()
+        merkleRoot = ''
         bits = 'ffff0001f'
         blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, bits)
         blockHeader.mine()
-        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, transaction).__dict__])
+        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, coinbaseTx).__dict__])
         
 
     def main(self):

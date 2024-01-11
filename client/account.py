@@ -6,8 +6,14 @@ from backend.util.util import hash160
 from backend.util.util import hash256
 
 class Account:
+    """
+    This class crates the private and public keys, as well as addresses.
+    The private key is a single unsigned 256 bit integer and randomly generated
+    The public is derived from the private key and is compressed. They contain a 0x02 0x04 prefix
+    """
 
     def createKeys(self):
+        # this corresponds to 2 points on an elliptic curve
         Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798
         Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8
 
@@ -24,6 +30,7 @@ class Account:
             compressesKey = b'\x03' + xPoint.num.to_bytes(32, 'big')
 
         hsh160 = hash160(compressesKey)
+        
         """Prefix for Mainnet"""
         mainPrefix = b'\x00'
 
