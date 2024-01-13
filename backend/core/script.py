@@ -44,7 +44,9 @@ class Script:
 
     @classmethod
     def p2pkh_script(cls, h160):
-        """This class method takes a hash160 and returns the p2pkh script
-        0x76, 0xa9, 0x88, 0xac are op codes """
+        """
+        This class method takes a hash160 and returns the p2pkh script.
+        0x76, 0xa9, 0x88, 0xac are op codes 
+        """
         return Script([0x76, 0xa9, h160, 0x88, 0xac])
     

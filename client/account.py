@@ -20,8 +20,8 @@ class Account:
 
         G = Sha256Point(Gx, Gy)
 
-        privateKey = secrets.randbits(256)
-        unCompressedPublicKey = privateKey * G
+        self.privateKey = secrets.randbits(256)
+        unCompressedPublicKey = self.privateKey * G
         xPoint = unCompressedPublicKey.x
         yPoint = unCompressedPublicKey.y
 
@@ -62,7 +62,7 @@ class Account:
 
         self.publicAddress = prefix + result
 
-        print(f"Private key is {privateKey}")
+        print(f"Private key is {self.privateKey}")
         print(f"Public key is {self.publicAddress}")
 
 

@@ -34,7 +34,7 @@ class CoinbaseTx:
         txIns[0].scriptSig.cmds.append(self.blockHeightLittleEndian)
 
         txOuts = []
-        targetAmount = REWARD * 1000000
+        targetAmount = REWARD * 10000000
         targeth160 = base58.b58decode(minerAddress)
         targetScript = Script.p2pkh_script(targeth160)
         txOuts.append(TxOut(amount = targetAmount, scriptPublicKey = targetScript))
