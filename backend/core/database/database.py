@@ -14,7 +14,7 @@ class BaseDB:
     """
     def __init__(self):
         self.basePath = 'data'
-        self.filePath = './'.join((self.basePath, self.fileName))
+        self.filePath = '/'.join((self.basePath, self.fileName))
 
     def read(self):
         if not os.path.exists(self.filePath):
@@ -55,3 +55,11 @@ class BlockChainDB(BaseDB):
         
         if data:
             return data[-1]
+        
+class AccountDB(BaseDB):
+    """
+    This class will store all blockchain addresses in a database called Accounts
+    """
+    def __init__(self):
+        self.fileName = 'Accounts'
+        super().__init__()

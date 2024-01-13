@@ -16,10 +16,10 @@ load_dotenv()  # take environment variables from .env.
 
 ZERO_HASH = b'\0' * 32
 REWARD = 50
+SIGHASH_ALL = 1
 
-privateKey = '59024195091230105596801455306913435815673319996141880726735464739248197324364'
-minerAddress = '1LYgXwYXw16GJXgDwHV7aCNijnQWYEdc1C'
-
+privateKey = os.getenv('PRIVATE_KEY')
+minerAddress = os.getenv('MINER_ADDRESS')
 
 class CoinbaseTx:
     def __init__(self, blockHeight):
@@ -43,6 +43,35 @@ class CoinbaseTx:
         coinbaseTx.txId = coinbaseTx.id()
 
         return coinbaseTx
+    
+    def sign_hash(self, inputIndex, scriptPubKey):
+        s = int_to_little_endian(self.version, 4)
+        s += encode_varint(len(self.txIns))
+
+        for i, txIn in enumerate(self.txIns):
+            if i == inputIndex:
+                s += TxIn(txIn.prevTx, txIn.prevIndex, scriptPubKey).serialize()
+            else:
+                s += TxIn(txIn.prevTx, txIn.prevIndex).serialize()
+
+        s += encode_varint(len(self.txOuts))
+
+        for txOut in self.txOuts:
+            s += txOut.serialize()
+        
+        s += int_to_little_endian(self.lockTime, 4)
+        s += int_to_little_endian(SIGHASH_ALL, 4)
+
+        h256 = hash256(s)
+        return int.from_bytes(hash256, 'big')
+
+    
+    def sign_input(self, inputIndex, privateKey, scriptPubKey):
+        z = self.sign_hash(inputIndex, scriptPubKey)
+        der = privateKey.sign(z).der()
+        sig = der + SIGHASH_ALL.to_bytes(1, 'big')
+        sec = privateKey.point.sec()
+        self.txIns[inputIndex].scriptSig = Script([sig, sec])
 
 
 class Tx:

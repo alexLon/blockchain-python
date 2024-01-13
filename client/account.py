@@ -1,6 +1,7 @@
 import sys
 sys.path.append('/dev/blockchain-python')
 from backend.core.EllipticCurve.EllipticCurve import Sha256Point
+from backend.core.database.database import AccountDB
 import secrets
 from backend.util.util import hash160
 from backend.util.util import hash256
@@ -59,12 +60,13 @@ class Account:
             num, mod = divmod(num, 58)
             result = BASE58_ALPHABET[mod] + result
 
-        publicAddress = prefix + result
+        self.publicAddress = prefix + result
 
         print(f"Private key is {privateKey}")
-        print(f"Public key is {publicAddress}")
+        print(f"Public key is {self.publicAddress}")
 
 
 if __name__ == '__main__':
     acct = Account()
     acct.createKeys()
+    AccountDB().write([acct.__dict__])
