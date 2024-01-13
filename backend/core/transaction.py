@@ -1,6 +1,7 @@
 import os
+import base58
 from backend.core.script import Script
-from backend.util.util import int_to_little_endian, bytes_needed, decode_base58, little_endian_to_int
+from backend.util.util import int_to_little_endian, bytes_needed, decode_base58, little_endian_to_int, int_to_little_endian, encode_varint, hash256
 from dotenv import load_dotenv
 
 
@@ -16,8 +17,9 @@ load_dotenv()  # take environment variables from .env.
 ZERO_HASH = b'\0' * 32
 REWARD = 50
 
-privateKey = os.getenv('PRIVATE_KEY')
-minerAddress = os.getenv('MINER_ADDRESS')
+privateKey = '59024195091230105596801455306913435815673319996141880726735464739248197324364'
+minerAddress = '1LYgXwYXw16GJXgDwHV7aCNijnQWYEdc1C'
+
 
 class CoinbaseTx:
     def __init__(self, blockHeight):
@@ -33,11 +35,14 @@ class CoinbaseTx:
 
         txOuts = []
         targetAmount = REWARD * 1000000
-        targeth160 = decode_base58(minerAddress)
+        targeth160 = base58.b58decode(minerAddress)
         targetScript = Script.p2pkh_script(targeth160)
         txOuts.append(TxOut(amount = targetAmount, scriptPublicKey = targetScript))
 
-        return Tx(1, txIns, txOuts, 0)
+        coinbaseTx = Tx(1, txIns, txOuts, 0)
+        coinbaseTx.txId = coinbaseTx.id()
+
+        return coinbaseTx
 
 
 class Tx:
@@ -46,6 +51,30 @@ class Tx:
         self.txIns = txIns
         self.txOuts = txOuts
         self.lockTime = lockTime
+
+    def id(self):
+        """ Human-readable Tx id"""
+        return self.hash().hex()
+
+    def hash(self):
+        """ Binary has of serialization """
+        return hash256(self.serialize())[::-1]
+
+    def serialize(self):
+        result = int_to_little_endian(self.version, 4)
+        result += encode_varint(len(self.txIns))
+
+        for txIn in self.txIns:
+            result += txIn.serialize()
+        
+        result += encode_varint(len(self.txOuts))
+
+        for txOut in self.txOuts:
+            result += txOut.serialize()
+        
+        result += int_to_little_endian(self.lockTime, 4)
+
+        return result
 
     def is_coinbase(self):
         """ 
@@ -61,7 +90,7 @@ class Tx:
         if first_input.prevTx != b'\x00' * 32:
             return False
         
-        if first_input.prev_index != 0xffffffff:
+        if first_input.prevIndex != 0xffffffff:
             return False
         
         return True
@@ -73,11 +102,10 @@ class Tx:
         2. converts blockHeight to hex
         """
         if self.is_coinbase():
-            self.txIns[0].prev_tx = self.txIns[0].prev_tx.hex()
-            self.txIns[0].scriptSig.cmd[0] = little_endian_to_int(self.txIns[0].scriptSig.cmds[0])
+            self.txIns[0].prevTx = self.txIns[0].prevTx.hex()
+            self.txIns[0].scriptSig.cmds[0] = little_endian_to_int(self.txIns[0].scriptSig.cmds[0])
             self.txIns[0].scriptSig = self.txIns[0].scriptSig.__dict__
-        
-        self.txIns[0] = self.txIns[0].__dict__
+            self.txIns[0] = self.txIns[0].__dict__
         """
         Convert transaction output to dict
         1. if numbers, don't do anything
@@ -95,14 +123,41 @@ class TxIn:
     def __init__(self, prevTx, prevIndex, scriptSig = None, sequence = 0xffffffff):
         self.prevTx = prevTx
         self.prevIndex = prevIndex
-        self.sequence = sequence
         if scriptSig is None:
             self.scriptSig = Script()
         else:
             self.scriptSig = scriptSig
+        self.sequence = sequence
+
+    def serialize(self):
+        result = self.prevTx[::-1]
+        result += int_to_little_endian(self.prevIndex, 4)
+        result += self.scriptSig.serialize()
+        result += int_to_little_endian(self.sequence, 4)
+        
+        return result
+
+    def to_dict(self):
+        self.prevTx = self.prevTx.__dict__
+        self.prevIndex = self.prevIndex.__dict__
+        self.sequence = self.sequence.__dict__
+        self.scriptSig = self.scriptSig.__dict__
+
+        return self.__dict__
 
 
 class TxOut:
     def __init__(self, amount, scriptPublicKey):
         self.amount = amount
         self.scriptPublicKey = scriptPublicKey
+    
+    def serialize(self):
+        result = int_to_little_endian(self.amount, 4)
+        result += self.scriptPublicKey.serialize()
+        
+        return result
+    
+    def to_dict(self):
+        self.amount = self.amount.__dict__
+        self.scriptPublicKey = self.scriptPublicKey.__dict__
+

@@ -42,3 +42,17 @@ def decode_base58(s):
         raise ValueError(f'bad address {checksum} {hash256(combined[:-4][:4])}')
 
     return combined[1:-4]
+
+
+def encode_varint(i):
+    ''' encodes integer to varint '''
+    if i < 0xfd:
+        return bytes([i])
+    elif i < 0x10000:
+        return b'\xfd' + int_to_little_endian(i, 2)
+    elif i < 0x100000000:
+        return b'\xfe' + int_to_little_endian(i, 4)
+    elif i < 0x10000000000000000:
+        return b'\xff' + int_to_little_endian(i, 8)
+    else:
+        raise ValueError(f'integer too large: {i}')

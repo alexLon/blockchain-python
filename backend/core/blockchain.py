@@ -24,7 +24,7 @@ class BlockChain:
     """
     
     def __init__(self):
-        self.genenis_block()
+        pass
 
     def write_on_disk(self, block):
         blockChainDB = BlockChainDB()
@@ -43,14 +43,18 @@ class BlockChain:
         timestamp = int(time.time())
         coinbaseInstance = CoinbaseTx(BlockHeight)
         coinbaseTx = coinbaseInstance.CoinbaseTransaction()
-        merkleRoot = ''
+        merkleRoot = coinbaseTx.txId
         bits = 'ffff0001f'
         blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, bits)
         blockHeader.mine()
-        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, coinbaseTx).__dict__])
+        print(f"Blocked mined: {BlockHeight} - Nonce: {blockHeader.nonce}")
+        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, coinbaseTx.to_dict()).__dict__])
         
 
     def main(self):
+        lastBlock = self.fetch_last_block()
+        if lastBlock is None:
+            self.genenis_block()
         while True:
             lastBlock = self.fetch_last_block()
             BlockHeight = lastBlock["height"] + 1
