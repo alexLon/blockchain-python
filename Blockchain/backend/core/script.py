@@ -6,6 +6,9 @@ class Script:
             self.cmds = []
         else:
             self.cmds = cmds
+
+    def __add__(self, other):
+        return Script(self.cmds + other.cmds)
     
     def serialize(self):
         # initialize what we will send back
