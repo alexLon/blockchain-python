@@ -25,8 +25,9 @@ class BlockChain:
     and we add the newly solved block to the existing chain.
     """
     
-    def __init__(self, utxos):
+    def __init__(self, utxos, memPool):
         self.utxos = utxos
+        self.memPool = memPool
 
     def write_on_disk(self, block):
         blockChainDB = BlockChainDB()
@@ -74,10 +75,11 @@ class BlockChain:
 if __name__ == "__main__":
     with Manager() as manager:
         utxos = manager.dict()
+        memPool = manager.dict()
 
-        webapp = Process(target = main, args = (utxos,))
+        webapp = Process(target = main, args = (utxos, memPool))
         webapp.start()
 
-        blockChain = BlockChain(utxos)
+        blockChain = BlockChain(utxos, memPool)
         blockChain.main()
 

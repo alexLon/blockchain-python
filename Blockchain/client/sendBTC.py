@@ -19,7 +19,7 @@ class SendBTC:
         self.utxos = UTXOS
 
     def script_pub_key(self, publicAddress):
-        h160 = base58.b58decode(publicAddress)
+        h160 = decode_base58(publicAddress)
         scriptPubKey = Script().p2pkh_script(h160)
         return scriptPubKey
     
@@ -58,7 +58,7 @@ class SendBTC:
                     # when the public key hash matches those in the block, creating txIn object and incrementing total
                     if txOut.scriptPublicKey.cmds[2] == self.fromPubKeyHash:
                         self.total += txOut.amount
-                        prevTx = bytes.fromhex(txObj.id())
+                        prevTx = bytes.fromhex(txByte)
                         txIns.append(TxIn(prevTx, index))
             else:
                 break
@@ -97,8 +97,9 @@ class SendBTC:
         if self.isBalancedEnough:
             self.txOuts = self.prepare_tx_out()
             self.txObj = Tx(1, self.txIns, self.txOuts, 0)
+            self.txObj.txId = self.txObj.id()
             self.sign_transaction()
-            return True
+            return self.txObj
         return False
 
 

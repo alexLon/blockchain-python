@@ -34,8 +34,8 @@ class CoinbaseTx:
         txIns[0].scriptSig.cmds.append(self.blockHeightLittleEndian)
 
         txOuts = []
-        targetAmount = REWARD * 10000000
-        targeth160 = base58.b58decode(minerAddress)
+        targetAmount = REWARD * 100000000
+        targeth160 = decode_base58(minerAddress)
         targetScript = Script.p2pkh_script(targeth160)
         txOuts.append(TxOut(amount = targetAmount, scriptPublicKey = targetScript))
 
@@ -104,6 +104,12 @@ class Tx:
         sig = der + SIGHASH_ALL.to_bytes(1, 'big')
         sec = privateKey.point.sec()
         self.txIns[inputIndex].scriptSig = Script([sig, sec])
+
+    def verify_input(self, inputIndex, scriptPubKey):
+        txIn = self.txIns[inputIndex]
+        z = self.sign_hash(inputIndex, scriptPubKey)
+        combined = txIn.scriptSig + scriptPubKey
+        return combined.evaluate(z)
 
     def is_coinbase(self):
         """ 
@@ -181,7 +187,7 @@ class TxOut:
         self.scriptPublicKey = scriptPublicKey
     
     def serialize(self):
-        result = int_to_little_endian(self.amount, 4)
+        result = int_to_little_endian(self.amount, 8)
         result += self.scriptPublicKey.serialize()
         
         return result

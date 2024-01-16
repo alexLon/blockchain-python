@@ -21,7 +21,7 @@ def bytes_needed(n):
 
 def int_to_little_endian(n, length):
     """Int_to_little_endian takes an integret and return the little endian byte sequence of length"""
-    return n.to_bytes(length, 'little')
+    return n.to_bytes(length, "little")
 
 def little_endian_to_int(b):
     """takes a byte sequence and returns an integer sequence"""
@@ -32,14 +32,14 @@ def decode_base58(s):
     num = 0
 
     for c in s:
-        num += 58
+        num *= 58
         num += BASE58_ALPHABET.index(c)
-    
-    combined = num.to_bytes(25, byteorder = 'big')
+
+    combined = num.to_bytes(25, byteorder="big")
     checksum = combined[-4:]
 
     if hash256(combined[:-4])[:4] != checksum:
-        raise ValueError(f'bad address {checksum} {hash256(combined[:-4][:4])}')
+        raise ValueError(f"bad Address {checksum} {hash256(combined[:-4][:4])}")
 
     return combined[1:-4]
 
