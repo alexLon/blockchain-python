@@ -132,24 +132,30 @@ class Tx:
     
     def to_dict(self):
         """
-        This method will convert the coinbase transaction
+        This method will convert any transactions
         1. converts prevTx hash from bytes to hex
         2. converts blockHeight to hex
         """
-        if self.is_coinbase():
-            self.txIns[0].prevTx = self.txIns[0].prevTx.hex()
-            self.txIns[0].scriptSig.cmds[0] = little_endian_to_int(self.txIns[0].scriptSig.cmds[0])
-            self.txIns[0].scriptSig = self.txIns[0].scriptSig.__dict__
-            self.txIns[0] = self.txIns[0].__dict__
-        """
-        Convert transaction output to dict
-        1. if numbers, don't do anything
-        2. if values in bytes, convert to hex
-        3. loop through all the txOuts objects and convert to dict
-        """
-        self.txOuts[0].scriptPublicKey.cmds[2] = self.txOuts[0].scriptPublicKey.cmds[2].hex()
-        self.txOuts[0].scriptPublicKey = self.txOuts[0].scriptPublicKey.__dict__
-        self.txOuts[0] = self.txOuts[0].__dict__
+
+        for txIndex, txIn in enumerate(self.txIns):
+            if self.is_coinbase():
+                txIn.scriptSig.cmds[0] = little_endian_to_int(txIn.scriptSig.cmds[0])
+            
+            txIn.prevTx = txIn.prevTx.hex()
+
+            for index, cmd in enumerate(txIn.scriptSig.cmds):
+                if isinstance(cmd, bytes):
+                    txIn.scriptSig.cmds[index] = cmd.hex()
+            
+            txIn.scriptSig = txIn.scriptSig.__dict__
+            self.txIns[txIndex] = txIn.__dict__
+
+
+            for index, txOut in enumerate(self.txOuts):
+                txOut.scriptPublicKey.cmds[2] = txOut.scriptPublicKey.cmds[2].hex()
+                txOut.scriptPublicKey = txOut.scriptPublicKey.__dict__
+                self.txOuts[index] = txOut.__dict__
+
 
         return self.__dict__
 
