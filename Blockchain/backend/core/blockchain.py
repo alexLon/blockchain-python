@@ -59,6 +59,7 @@ class BlockChain:
 
     """ Read transaction from memory pool """
     def read_transaction_from_memorypool(self):
+        self.blockSize = 80
         self.txIds = []
         self.addTransactionsInBlock = []
         self.removeSpentTransactions = []
@@ -67,6 +68,7 @@ class BlockChain:
         for tx in self.memPool:
             self.txIds.append(bytes.fromhex(tx))
             self.addTransactionsInBlock.append(self.memPool[tx])
+            self.blockSize += len(self.memPool[tx].serialize())
 
             for spent in self.memPool[tx].txIns:
                 self.removeSpentTransactions.append([spent.prevTx, spent.prevIndex])
@@ -111,6 +113,7 @@ class BlockChain:
         timestamp = int(time.time())
         coinbaseInstance = CoinbaseTx(BlockHeight)
         coinbaseTx = coinbaseInstance.CoinbaseTransaction()
+        self.blockSize += len(coinbaseTx.serialize())
 
         coinbaseTx.txOuts[0].amount = coinbaseTx.txOuts[0].amount + self.fee
 
@@ -118,7 +121,6 @@ class BlockChain:
         self.addTransactionsInBlock.insert(0, coinbaseTx)
 
         merkleRoot = merkle_root(self.txIds)[::-1].hex()
-        bits = 'ffff0001f'
         blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, self.bits)
         blockHeader.mine(self.currentTarget)
         self.remove_spent_transactions()
