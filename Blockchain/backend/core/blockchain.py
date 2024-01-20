@@ -4,7 +4,7 @@ sys.path.append('/dev/blockchain-python/')
 from Blockchain.backend.core.block import Block
 from Blockchain.backend.core.blockheader import BlockHeader
 from Blockchain.backend.core.database.database import BlockChainDB
-from Blockchain.backend.util.util import hash256, merkle_root
+from Blockchain.backend.util.util import hash256, merkle_root, target_to_bits
 from Blockchain.backend.core.transaction import CoinbaseTx
 from multiprocessing import Process, Manager
 from Blockchain.frontend.run import main
@@ -13,6 +13,7 @@ import time
 
 ZERO_HASH = '0' * 64
 VERSION = 1
+INITIAL_TARGET = 0x0000FFFF00000000000000000000000000000000000000000000000000000000
 
 
 class BlockChain:
@@ -28,6 +29,8 @@ class BlockChain:
     def __init__(self, utxos, memPool):
         self.utxos = utxos
         self.memPool = memPool
+        self.currentTarget = INITIAL_TARGET
+        self.bits = target_to_bits(INITIAL_TARGET)
 
     def write_on_disk(self, block):
         blockChainDB = BlockChainDB()
@@ -67,7 +70,11 @@ class BlockChain:
 
             for spent in self.memPool[tx].txIns:
                 self.removeSpentTransactions.append([spent.prevTx, spent.prevIndex])
-        
+
+    def remove_transactions_from_memorypool(self):
+        for tx in self.txIds:
+            if tx.hex() in self.memPool:
+                del self.memPool[tx.hex()]   
     
     def genenis_block(self):
         BlockHeight = 0
@@ -79,22 +86,43 @@ class BlockChain:
 
         for tx in self.addTransactionsInBlock:
             self.txJson.append(tx.to_dict())
+
+    def calculate_fee(self):
+        self.inputAmount = 0
+        self.outputAmount = 0
+
+        """ calculate input amount """
+        for txId_index in self.removeSpentTransactions:
+            if txId_index[0].hex() in self.utxos:
+                self.inputAmount += self.utxos[txId_index[0].hex()].txOuts[txId_index[1]].amount
+        
+        """ calculate output amount """
+        for tx in self.addTransactionsInBlock:
+            for txOut in tx.txOuts:
+                self.outputAmount += txOut.amount
+            
+        self.fee = self.inputAmount - self.outputAmount
+
     
     def add_block(self, BlockHeight, prevBlockHash):
 
         self.read_transaction_from_memorypool()
+        self.calculate_fee()
         timestamp = int(time.time())
         coinbaseInstance = CoinbaseTx(BlockHeight)
         coinbaseTx = coinbaseInstance.CoinbaseTransaction()
+
+        coinbaseTx.txOuts[0].amount = coinbaseTx.txOuts[0].amount + self.fee
 
         self.txIds.insert(0, bytes.fromhex(coinbaseTx.txId))
         self.addTransactionsInBlock.insert(0, coinbaseTx)
 
         merkleRoot = merkle_root(self.txIds)[::-1].hex()
         bits = 'ffff0001f'
-        blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, bits)
-        blockHeader.mine()
+        blockHeader = BlockHeader(VERSION, prevBlockHash, merkleRoot, timestamp, self.bits)
+        blockHeader.mine(self.currentTarget)
         self.remove_spent_transactions()
+        self.remove_transactions_from_memorypool()
         self.store_utxos_in_cache()
         self.convert_to_json()
         
