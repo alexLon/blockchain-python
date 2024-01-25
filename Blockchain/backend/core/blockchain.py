@@ -129,7 +129,7 @@ class BlockChain:
         self.convert_to_json()
         
         print(f"Blocked mined: {BlockHeight} - Nonce: {blockHeader.nonce}")
-        self.write_on_disk([Block(BlockHeight, 1, blockHeader.__dict__, 1, self.txJson).__dict__])
+        self.write_on_disk([Block(BlockHeight, self.blockSize, blockHeader.__dict__, 1, self.txJson).__dict__])
         
 
     def main(self):

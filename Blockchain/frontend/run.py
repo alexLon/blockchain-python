@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 from Blockchain.client.sendBTC import SendBTC
 from Blockchain.backend.core.transaction import Tx
 from Blockchain.backend.core.database.database import BlockChainDB
+from Blockchain.backend.util.util import encode_base58
+from hashlib import sha256
 import time 
 
 timestamp = time.time()
@@ -11,11 +13,11 @@ app = Flask(__name__)
 def index():
     return render_template("home.html")
 
-@app.route('/transactions')
+@app.route("/transactions")
 def transactions():
     return "<h1>Transactions</h1>"
 
-@app.route('/mempool')
+@app.route("/mempool")
 def mempool():
     return "<h1>Mempool</h1>"
 
@@ -38,11 +40,26 @@ def read_database():
 
 @app.route("/block")
 def block():
+    if request.args.get('blockHeader'):
+            return redirect(url_for('show_block', blockHeader=request.args.get('blockHeader')))
+    else:
+        blocks = read_database()
+        return render_template('block.html', blocks=blocks)
+
+@app.route("/block/<blockHeader>")
+def show_block(blockHeader):
     blocks = read_database()
-    return render_template('block.html', blocks=blocks)
+    for block in blocks:
+        if block['blockHeader']['blockHash'] == blockHeader:
+            main_prefix = b'\x00'
+            return render_template('blockDetails.html', block = block, main_prefix = main_prefix, 
+                                   encode_base58 = encode_base58, bytes = bytes, sha256 = sha256)
 
+@app.route("/address")
+def address():
+    return "<h1> Address page </h1>"
 
-@app.route('/wallet', methods = ['GET', 'POST'])
+@app.route("/wallet", methods = ['GET', 'POST'])
 def wallet():
     message = ''
     if request.method == 'POST':
