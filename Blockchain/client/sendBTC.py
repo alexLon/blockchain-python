@@ -12,7 +12,7 @@ write doc here!
 class SendBTC:
     
     def __init__(self, fromAccount, toAccount, amount, UTXOS):
-        self.COIN = 1000000 # satoshi
+        self.COIN = 100000000 # satoshi
         self.fromPublicAddress = fromAccount
         self.toAccount = toAccount
         self.amount = amount * self.COIN
