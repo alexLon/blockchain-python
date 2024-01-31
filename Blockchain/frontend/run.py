@@ -8,18 +8,91 @@ import time
 
 timestamp = time.time()
 app = Flask(__name__)
+main_prefix = b'\x00'
+global memoryPool
+memoryPool = {}
 
 @app.route("/")
 def index():
     return render_template("home.html")
 
+@app.route("/transactions/<txid>")
 @app.route("/transactions")
-def transactions():
-    return "<h1>Transactions</h1>"
+def transactions(txid = None):
+    if txid:
+        return redirect(url_for('txDetail', txid = txid))
+    else:
+        errorFlag = True
+        while errorFlag:
+            try:
+                allTxs = dict(UTXOS)
+                errorFlag = False
+                return render_template('transactions.html', allTransactions=allTxs, refreshtime=10)
+            except:
+                errorFlag = True
+                return render_template('transactions.html', allTransactions={}, refreshtime=10)
+
+@app.route("/tx/<txid>")
+def txDetail(txid):
+    blocks = read_database()
+    for block in blocks:
+        for tx in block['txs']:
+            if tx['txId'] == txid:
+                return render_template('txDetail.html', tx=tx, block=block, encode_base58=encode_base58,
+                                       bytes=bytes, sha256=sha256, main_prefix=main_prefix)
 
 @app.route("/mempool")
 def mempool():
-    return "<h1>Mempool</h1>"
+    try:
+        blocks = read_database()
+        errorFlag = True
+        while errorFlag:
+            try:
+                mempoolTxs = dict(MEMPOOL)
+                print(f"\nmempoolTxs VARIABLE {mempoolTxs}")
+                errorFlag = False
+            except:
+                errorFlag = True
+                #print("Error reading database")
+        
+        """ if txId is not in the original list then remove it from the mempool"""
+        for txId in memoryPool:
+            if txId not in mempoolTxs:
+                del memoryPool[txId]
+
+        """ Add the new tx to the mempool if it is not already there"""
+        for txId in mempoolTxs:
+            amount = 0
+            txObj = mempoolTxs[txId]
+            matchFound = False
+
+            """ Total amount """
+            for txIn in txObj.txIns:
+                for block in blocks:
+                    for tx in block['txs']:
+                        if tx['txId'] == txIn.prevTx.hex():
+                            amount += tx['txOuts'][txIn.prevIndex]['amount']
+                            matchFound = True
+                            break
+                    if matchFound:
+                        matchFound = False
+                        break
+            
+            memoryPool[txObj.txId] = [txObj.to_dict(), amount/100000000, txIn.prevIndex]
+        return render_template("mempool.html",txs=memoryPool,refreshtime=2)
+    except Exception as e:
+        return render_template("mempool.html",txs=memoryPool,refreshtime=2)
+
+@app.route("/memTx/<txId>")
+def memTxDetails(txId):
+    if txId in memoryPool:
+        tx = memoryPool.get(txId)[0]
+        return render_template('txDetail.html', tx=tx, refreshtime=2,
+                               encode_base58=encode_base58, bytes=bytes, sha256=sha256, main_prefix=main_prefix,
+                               Unconfirmed=True)
+    else:
+        return redirect(url_for('transactions', txid=txId))
+
 
 @app.route("/search")
 def search():
@@ -38,20 +111,19 @@ def read_database():
             print("Error reading database")
     return blocks
 
-@app.route("/block")
+@app.route('/block')
 def block():
     if request.args.get('blockHeader'):
             return redirect(url_for('show_block', blockHeader=request.args.get('blockHeader')))
     else:
         blocks = read_database()
-        return render_template('block.html', blocks=blocks)
+        return render_template('block.html', blocks=blocks, refreshtime = 10)
 
 @app.route("/block/<blockHeader>")
 def show_block(blockHeader):
     blocks = read_database()
     for block in blocks:
         if block['blockHeader']['blockHash'] == blockHeader:
-            main_prefix = b'\x00'
             return render_template('blockDetails.html', block = block, main_prefix = main_prefix, 
                                    encode_base58 = encode_base58, bytes = bytes, sha256 = sha256)
 
@@ -84,6 +156,7 @@ def wallet():
             
             if verified:
                 MEMPOOL[txObj.txId] = txObj
+                print(f"\n +++++++++++++++++++++++   test    +++++++++++++++++++++++++ Length:" + str(len(MEMPOOL)))
                 message = 'Transaction added in memory pool'
 
     return render_template('wallet.html', message = message)

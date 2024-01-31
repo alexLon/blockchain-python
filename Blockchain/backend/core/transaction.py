@@ -151,10 +151,10 @@ class Tx:
             self.txIns[txIndex] = txIn.__dict__
 
 
-            for index, txOut in enumerate(self.txOuts):
-                txOut.scriptPublicKey.cmds[2] = txOut.scriptPublicKey.cmds[2].hex()
-                txOut.scriptPublicKey = txOut.scriptPublicKey.__dict__
-                self.txOuts[index] = txOut.__dict__
+        for index, txOut in enumerate(self.txOuts):
+            txOut.scriptPublicKey.cmds[2] = txOut.scriptPublicKey.cmds[2].hex()
+            txOut.scriptPublicKey = txOut.scriptPublicKey.__dict__
+            self.txOuts[index] = txOut.__dict__
 
 
         return self.__dict__
@@ -193,7 +193,7 @@ class TxOut:
         self.scriptPublicKey = scriptPublicKey
     
     def serialize(self):
-        result = int_to_little_endian(self.amount, 8)
+        result = int_to_little_endian(self.amount, 16)
         result += self.scriptPublicKey.serialize()
         
         return result
