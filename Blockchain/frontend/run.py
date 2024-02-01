@@ -2,12 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for
 from Blockchain.client.sendBTC import SendBTC
 from Blockchain.backend.core.transaction import Tx
 from Blockchain.backend.core.database.database import BlockChainDB
-from Blockchain.backend.util.util import encode_base58
+from Blockchain.backend.util.util import encode_base58, decode_base58
 from hashlib import sha256
+from flask_qrcode import QRcode
 import time 
 
 timestamp = time.time()
 app = Flask(__name__)
+qrcode = QRcode(app)
 main_prefix = b'\x00'
 global memoryPool
 memoryPool = {}
@@ -40,6 +42,7 @@ def txDetail(txid):
             if tx['txId'] == txid:
                 return render_template('txDetail.html', tx=tx, block=block, encode_base58=encode_base58,
                                        bytes=bytes, sha256=sha256, main_prefix=main_prefix)
+    return "<h1> Invalid identifier </h1>"
 
 @app.route("/mempool")
 def mempool():
@@ -96,7 +99,15 @@ def memTxDetails(txId):
 
 @app.route("/search")
 def search():
-    return "<h1>search</h1>"
+    identifier = request.args.get('search')
+    if len(identifier) == 64:
+        if identifier[:4] == "0000":
+            return redirect(url_for('show_block', blockHeader = identifier))
+        else:
+            return redirect(url_for('txDetail', txid = identifier))
+    else:
+        return redirect(url_for('address', publicAddress = identifier))
+    
 
 """ Read data from the blockchain """
 def read_database():
@@ -126,10 +137,38 @@ def show_block(blockHeader):
         if block['blockHeader']['blockHash'] == blockHeader:
             return render_template('blockDetails.html', block = block, main_prefix = main_prefix, 
                                    encode_base58 = encode_base58, bytes = bytes, sha256 = sha256)
+    return "<h1> Invalid identifier </h1>"
 
-@app.route("/address")
-def address():
-    return "<h1> Address page </h1>"
+@app.route("/address/<publicAddress>")
+def address(publicAddress):
+    if len(publicAddress) < 35 and publicAddress[:1] == '1':
+        h160 = decode_base58(publicAddress)
+
+        errorFlag = True
+        while errorFlag:
+            try:
+                allUtxos = dict(UTXOS)
+                errorFlag = False
+        
+            except Exception as e:
+                errorFlag = True
+        
+        amount = 0
+        accountUtxos = []
+
+        for txId in allUtxos:
+            for txOut in allUtxos[txId].txOuts:
+                if txOut.scriptPublicKey.cmds[2] == h160:
+                    amount += txOut.amount
+                    accountUtxos.append(allUtxos[txId])
+        
+        return render_template('address.html', txs = accountUtxos, amount = amount, 
+                               encode_base58 = encode_base58, bytes = bytes, sha256 = sha256, main_prefix = main_prefix,
+                               publicAddress = publicAddress, qrcode = qrcode)
+    else: 
+        return "<h1> Invalid identifier </h1>"
+    
+    
 
 @app.route("/wallet", methods = ['GET', 'POST'])
 def wallet():
