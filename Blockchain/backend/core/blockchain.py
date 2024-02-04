@@ -1,6 +1,7 @@
 import sys
 sys.path.append('/dev/blockchain-python/')
 
+import configparser
 from Blockchain.backend.core.block import Block
 from Blockchain.backend.core.blockheader import BlockHeader
 from Blockchain.backend.core.database.database import BlockChainDB
@@ -8,6 +9,8 @@ from Blockchain.backend.util.util import hash256, merkle_root, target_to_bits
 from Blockchain.backend.core.transaction import CoinbaseTx
 from multiprocessing import Process, Manager
 from Blockchain.frontend.run import main
+from Blockchain.backend.core.network.syncManager import syncManager
+from Blockchain.backend.core.database.database import NodeDB
 
 import time
 
@@ -129,8 +132,19 @@ class BlockChain:
         self.convert_to_json()
         
         print(f"Blocked mined: {BlockHeight} - Nonce: {blockHeader.nonce}")
-        self.write_on_disk([Block(BlockHeight, self.blockSize, blockHeader.__dict__, 1, self.txJson).__dict__])
-        
+        self.write_on_disk([Block(BlockHeight, self.blockSize, blockHeader.__dict__, len(self.txJson), self.txJson).__dict__])
+
+    """ Start the sync Node """  
+    def start_sync(self):
+        node = NodeDB()
+        portList = node.read()  
+
+        for port in portList:
+            if localHostPort != port:
+                sync = syncManager(localHost, port)
+                sync.start_download()
+
+
 
     def main(self):
         lastBlock = self.fetch_last_block()
@@ -144,13 +158,29 @@ class BlockChain:
 
 
 if __name__ == "__main__":
+
+    """ read configuration file """
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    localHost = config['DEFAULT']['host']
+    localHostPort = int(config['MINER']['port'])
+    webPort = int(config['WebHost']['port'])
+
+
     with Manager() as manager:
         utxos = manager.dict()
         memPool = manager.dict()
 
-        webapp = Process(target = main, args = (utxos, memPool))
+        webapp = Process(target = main, args = (utxos, memPool, webPort))
         webapp.start()
 
+        """ Start server and listen for miner requests """
+        sync = syncManager(localHost, localHostPort)
+        startServer = Process(target = sync.spin_up_server)
+        startServer.start()
+
+
         blockChain = BlockChain(utxos, memPool)
+        blockChain.start_sync()
         blockChain.main()
 

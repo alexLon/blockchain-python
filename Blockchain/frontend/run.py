@@ -125,7 +125,7 @@ def read_database():
 @app.route('/block')
 def block():
     if request.args.get('blockHeader'):
-            return redirect(url_for('show_block', blockHeader=request.args.get('blockHeader')))
+            return redirect(url_for('show_block', blockHeader=request.args.get('blockHeader'), refreshtime = 10))
     else:
         blocks = read_database()
         return render_template('block.html', blocks=blocks, refreshtime = 10)
@@ -200,12 +200,12 @@ def wallet():
 
     return render_template('wallet.html', message = message)
 
-def main(utxos, memPool):
+def main(utxos, memPool, port):
     global UTXOS
     global MEMPOOL
     UTXOS = utxos
     MEMPOOL = memPool
-    app.run()
+    app.run(port = port)
 
 
 
